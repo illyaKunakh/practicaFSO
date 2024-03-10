@@ -24,3 +24,74 @@
 #  L'script ha de ser flexible per permetre especificar tant rutes absolutes
 # com rutes relatives per als fitxers i directoris tant d'entrada com de
 # sortida.
+
+utilitzacio() {
+    echo "Us: $0 [-k] [-D] arxiu1 arxiu2 ... arxiu_tgz"
+    echo "Opcions:"
+    echo " -k: Afegeix un nou arxiu conservant l'existent"
+    echo " -D: Mostra els canvis que es farien"
+    exit 1
+}
+
+# Si hi han menys de 2 arguments, es recorda com s'utilitza el script
+if [ $# -lt 2 ]; then
+    utilitzacio
+fi
+
+opcio_k=false
+opcio_d=false
+dir_temp=$(mktemp -d)
+
+while llegeix_opcio "kD" opt; do
+    case $opt in
+        k)
+            opcio_k=true
+            ;;
+        D)
+            opcio_d=true
+            ;;
+        *)
+            utilitzacio
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+#Es capta l'ultim argument
+arxiu_sortida="${@: -1}"
+#Es capten tots els arguments menys l'ultim
+arxius=("${@:1:$#-1}")
+
+# Comprovem si el fitxer de sortida es un .tgz
+if [[ $arxiu_sortida != *.tgz ]]; then
+    echo "El fixter comprimit indicat no té l'extensio adequada: $arxiu_sortida"
+    exit 1
+fi
+
+# Tractem els arxius un a un
+for arxiu in "${arxius[@]}"; do
+    # Si l'argument origen es un arxiu o directori
+    if [ -f "$arxiu" -o -d "$arxiu" ]; then
+        cp -r "$arxiu" "$dir_temp"
+        arxiu_temp="$dir_temp/$(basename "$arxiu")"
+        # Si -k, es comprova si el fitxer ja existeix al tgz
+        if [ "$opcio_k" = true ] && tar -tf "$arxiu_sortida" | grep -q "$(basename $arxiu_temp)"; then
+            mod_date=$(date -r "$arxiu_temp" +%Y%m%d)
+            nou_temp="$dir_temp/$(basename "$arxiu_temp")$mod_date"
+            mv "$arxiu_temp" "$nou_temp"
+            arxiu_temp="$nou_temp"
+        fi
+        # Si -D, es mostra el que es faria
+        if [ "$opcio_d" = true ]; then
+            echo "S'haria afegit $arxiu_temp a $arxiu_sortida"
+        # Sino, inserta arxiu_temp al nou_arxiu_sortida
+        else
+            tar -rf "$arxiu_sortida" -C "$dir_temp" "$(basename "$arxiu_temp")"
+        fi
+    else
+        echo "Error: Arxiu o directori incorrecte: $arxiu"
+        exit 1
+    fi
+done
+
+rm -r "$dir_temp"
