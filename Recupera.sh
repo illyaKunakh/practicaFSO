@@ -13,3 +13,50 @@
 
 #  Opció -D: Si hi ha aquesta opció l’script només informarà del que faria,
 # però sense recuperar cap fitxer ni directori (DryRun).
+#!/bin/bash
+
+# Comprovem si s'ha especificat l'opció -D (DryRun)
+if [ "$1" == "-D" ]; then
+    # Informem que estem en mode DryRun i sortim
+    echo "DryRun mode activat"
+    exit 0
+fi
+
+# Obtenim l'arxiu comprimit i el directori de destí
+fitxer_tgz="$1"
+directori_desti="${@: -1}"
+
+# Resta de paràmetres són els fitxers a recuperar
+fitxers_a_recuperar="${@:2:$(($#-2))}"
+
+# Comprovem si l'arxiu comprimit existeix
+if [ ! -f "$fitxer_tgz" ]; then
+    echo "Error: L'arxiu comprimit especificat no existeix."
+    exit 1
+fi
+
+# Comprovem si el directori de destí existeix
+if [ ! -d "$directori_desti" ]; then
+    echo "Error: El directori de destinació especificat no existeix."
+    exit 1
+fi
+
+# Descomprimim l'arxiu
+tar -xzvf "$fitxer_tgz" -C "$directori_desti"
+
+# Recorrem els arxius recuperats i ens assegurem que afegim duplicats
+for file in "${fitxers_a_recuperar[@]}"; do
+    # Si existeix un arxiu amb el mateix nom pero amb data afegida, el mantenim
+    if [ -e "$directori_desti/$file" ]; then
+        mv "$directori_desti/$file" "$directori_desti/${file}_$(date +%Y%m%d_%H%M%S)"
+    fi
+done
+
+# Comprovem si la descompressió ha tingut èxit
+if [ $? -eq 0 ]; then
+    echo "Recuperació finalitzada amb èxit."
+else
+    echo "Error: S'ha produït un error durant la recuperació."
+fi
+
+exit 0
