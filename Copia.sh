@@ -93,7 +93,7 @@ for arxiu in "${arxius[@]}"; do
             cp -r "$arxiu" "$dir_temp/$nou"
         # Si -D
         elif [ "$opcio_d" = true ]; then
-            echo "S'haria afegit $arxiu_temp a $arxiu_sortida"
+            echo "S'hauria afegit $arxiu_temp a $arxiu_sortida"
         fi
 
     else
