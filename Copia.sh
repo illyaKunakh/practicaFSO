@@ -42,7 +42,7 @@ opcio_k=false
 opcio_d=false
 dir_temp=$(mktemp -d)
 
-while llegeix_opcio "kD" opt; do
+while getopts "kD" opt; do
     case $opt in
         k)
             opcio_k=true
@@ -67,31 +67,42 @@ if [[ $arxiu_sortida != *.tgz ]]; then
     echo "El fixter comprimit indicat no té l'extensio adequada: $arxiu_sortida"
     exit 1
 fi
+# Si fitxer de sortida existeix, el descomprimim
+if [ -f "$arxiu_sortida" ]; then
+    existeix_tgz=true
+    tar -xzf "$arxiu_sortida" -C "$dir_temp"
+else 
+    existeix_tgz=false
+fi
 
 # Tractem els arxius un a un
 for arxiu in "${arxius[@]}"; do
     # Si l'argument origen es un arxiu o directori
     if [ -f "$arxiu" -o -d "$arxiu" ]; then
-        cp -r "$arxiu" "$dir_temp"
-        arxiu_temp="$dir_temp/$(basename "$arxiu")"
-        # Si -k, es comprova si el fitxer ja existeix al tgz
-        if [ "$opcio_k" = true ] && tar -tf "$arxiu_sortida" | grep -q "$(basename $arxiu_temp)"; then
-            mod_date=$(date -r "$arxiu_temp" +%Y%m%d)
-            nou_temp="$dir_temp/$(basename "$arxiu_temp")$mod_date"
-            mv "$arxiu_temp" "$nou_temp"
-            arxiu_temp="$nou_temp"
-        fi
-        # Si -D, es mostra el que es faria
-        if [ "$opcio_d" = true ]; then
+        # Si no es pasen opcions com argument 
+        if [ "$opcio_k" = false ] && [ "$opcio_d" = false ]; then
+            # Es guarda el directori pare d'"arxiu"
+            mkdir -p "$dir_temp/$(dirname "$arxiu")"
+            cp -r "$arxiu" "$dir_temp/$arxiu" 
+        # Si -k
+        elif [ "$opcio_k" = true ]; then
+            # Es concatena la data al arxiu
+            data_mod=$(date -r "$arxiu" +"%Y%m%d")
+            nou="$arxiu.$data_mod"
+            mkdir -p "$dir_temp/$(dirname "$nou")"
+            cp -r "$arxiu" "$dir_temp/$nou"
+        # Si -D
+        elif [ "$opcio_d" = true ]; then
             echo "S'haria afegit $arxiu_temp a $arxiu_sortida"
-        # Sino, inserta arxiu_temp al nou_arxiu_sortida
-        else
-            tar -rf "$arxiu_sortida" -C "$dir_temp" "$(basename "$arxiu_temp")"
         fi
+
     else
         echo "Error: Arxiu o directori incorrecte: $arxiu"
         exit 1
     fi
 done
+
+# Es comprimeix l'arxiu
+tar -czvf "$arxiu_sortida" -C "$dir_temp" .
 
 rm -r "$dir_temp"
