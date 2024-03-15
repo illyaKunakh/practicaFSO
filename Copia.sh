@@ -59,26 +59,33 @@ shift $((OPTIND - 1))
 
 #Es capta l'ultim argument
 arxiu_sortida="${@: -1}"
+arxiu_sortida="${arxiu_sortida}.tgz"
 #Es capten tots els arguments menys l'ultim
 arxius=("${@:1:$#-1}")
 
-# Comprovem si el fitxer de sortida es un .tgz
-if [[ $arxiu_sortida != *.tgz ]]; then
-    echo "El fixter comprimit indicat no té l'extensio adequada: $arxiu_sortida"
-    exit 1
-fi
-# Si fitxer de sortida existeix, el descomprimim
-if [ -f "$arxiu_sortida" ]; then
-    existeix_tgz=true
-    tar -xzf "$arxiu_sortida" -C "$dir_temp"
-else 
-    existeix_tgz=false
+
+if [ "$opcio_d" = false ]; then
+    # Si fitxer de sortida existeix, el descomprimim
+    if [ -f "$arxiu_sortida" ]; then
+        existeix_tgz=true
+        tar -xzf "$arxiu_sortida" -C "$dir_temp"
+    else 
+        existeix_tgz=false
+    fi
 fi
 
+if [ "$opcio_k" = true ] && [ $existeix_tgz = false ]; then
+    echo "Error: No s'ha trobat el fitxer $arxiu_sortida, es procedeix a fer una insercio normal (no -k)"
+    opcio_k=false
+fi
 # Tractem els arxius un a un
 for arxiu in "${arxius[@]}"; do
     # Si l'argument origen es un arxiu o directori
     if [ -f "$arxiu" -o -d "$arxiu" ]; then
+        if [ "$opcio_k" = true ] && ! find "$dir_temp" -name "$(basename "$arxiu")" -print -quit | grep -q '^'; then
+            echo "Error: No s'ha trobat l'arxiu $arxiu a $arxiu_sortida, es procedeix a fer una insercio normal (no -k)"
+            opcio_k=false
+        fi
         # Si no es pasen opcions com argument 
         if [ "$opcio_k" = false ] && [ "$opcio_d" = false ]; then
             # Es guarda el directori pare d'"arxiu"
@@ -86,23 +93,36 @@ for arxiu in "${arxius[@]}"; do
             cp -r "$arxiu" "$dir_temp/$arxiu" 
         # Si -k
         elif [ "$opcio_k" = true ]; then
-            # Es concatena la data al arxiu
-            data_mod=$(date -r "$arxiu" +"%Y%m%d")
-            nou="$arxiu.$data_mod"
-            mkdir -p "$dir_temp/$(dirname "$nou")"
-            cp -r "$arxiu" "$dir_temp/$nou"
+            if [ "$opcio_d" = true ]; then
+                echo "S'afegeix l'extensio .tgz a l'arxiu de sortida"
+                echo "Si aquest arxiu comprimit  $arxiu_sortida ja existeix, es descomprimiria el seu contingut a $dir_temp"
+                echo "Es contena la data de ultima modificacio de $arxiu tal que l'arxiu amb la data seria $arxiu.$(date -r "$arxiu" +"%Y%m%d") "
+                echo "Es crea un directori en una ruta que combina $dir_temp i el directori pare de $arxiu.$(date -r "$arxiu" +"%Y%m%d")"
+                echo "Es fa una copia recursiva de $arxiu.$(date -r "$arxiu" +"%Y%m%d") a $dir_temp/$arxiu.$(date -r "$arxiu" +"%Y%m%d")"
+            else
+                # Es concatena la data al arxiu
+                data_mod=$(date -r "$arxiu" +"%Y%m%d")
+                nou="$arxiu.$data_mod"
+                mkdir -p "$dir_temp/$(dirname "$nou")"
+                cp -r "$arxiu" "$dir_temp/$nou"
+            fi
         # Si -D
         elif [ "$opcio_d" = true ]; then
-            echo "S'hauria afegit $arxiu_temp a $arxiu_sortida"
+            echo "S'afegeix l'extensio .tgz a l'arxiu de sortida"
+            echo "Si aquest arxiu comprimit  $arxiu_sortida ja existeix, es descomprimiria el seu contingut a $dir_temp"
+            echo "Es crea un directori en una ruta que combina $dir_temp i el directori pare de $arxiu"
+            echo "Es fa una copia recursiva de $arxiu a $dir_temp/$arxiu"
+            echo "Es comprimeix l'arxiu"
+            echo "S'hauria afegit $arxiu a $arxiu_sortida"
         fi
-
     else
         echo "Error: Arxiu o directori incorrecte: $arxiu"
         exit 1
     fi
 done
 
+if [ "$opcio_d" = false ]; then
 # Es comprimeix l'arxiu
 tar -czvf "$arxiu_sortida" -C "$dir_temp" .
-
+fi
 rm -r "$dir_temp"
