@@ -41,14 +41,42 @@ if [ ! -d "$directori_desti" ]; then
     exit 1
 fi
 
+# Creem un directori temporal
+tmp_dir=$(mktemp -d)
+tar -xzf "$fitxer_tgz" -C "$tmp_dir"
+ls "$tmp_dir"
+# Descomprimim l'arxiu a un directori temporal
+#if [ "$1" != "-D" ]; then
+ #   tar -xzf "$fitxer_tgz" -C "$tmp_dir"
+#    if [ $? -ne 0 ]; then
+ #       echo "Error: No s'ha pogut descomprimir l'arxiu."
+  #      exit 1
+  #  fi
+#fi
 # Descomprimim l'arxiu
-tar -xzvf "$fitxer_tgz" -C "$directori_desti"
+#tar -xzvf "$fitxer_tgz" -C "$directori_desti"
+
+# Recuperem els fitxers especificats de l'arxiu comprimit
+if [ "$1" != "-D" ]; then
+    fitxers_a_recuperar=("${@:2:$(($#-2))}")
+    for fitxer in "${fitxers_a_recuperar[@]}"; do
+        if [ -e "$tmp_dir/$fitxer" ]; then
+            if [ "$1" == "-D" ]; then
+                dryrun_echo "Descomprimint $fitxer de $fitxer_tgz a $directori_desti"
+            else
+                cp -r "$tmp_dir/$fitxer" "$directori_desti"
+            fi
+        else
+            echo "El fitxer $fitxer no es troba a l'arxiu comprimit."
+        fi
+    done
+fi
 
 # Recorrem els arxius recuperats i ens assegurem que afegim duplicats
 for file in "${fitxers_a_recuperar[@]}"; do
     # Si existeix un arxiu amb el mateix nom pero amb data afegida, el mantenim
     if [ -e "$directori_desti/$file" ]; then
-        mv "$directori_desti/$file" "$directori_desti/${file}_$(date +%Y%m%d_%H%M%S)"
+        mv "$directori_desti/$file" "$directori_desti/${file}$(date +%Y%m%d%H%M%S)"
     fi
 done
 
