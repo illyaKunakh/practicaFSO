@@ -71,6 +71,7 @@
 #define MIN_RET 0.0
 #define MAX_RET 5.0
 
+int cont = 0; /*Contador de moviments*/
 
 /* variables globals */
 int n_fil, n_col, m_por;	/* dimensions del taulell i porteries */
@@ -265,23 +266,37 @@ void* moure_pilota(void * arg)
 void* mou_paleta_usuari(void * arg)
 {
   int *tecla = (int *)arg;
-  if (((*tecla) == TEC_AVALL) && (win_quincar(ipu_pf+l_pal,ipu_pc) == ' '))
-  {
-    win_escricar(ipu_pf,ipu_pc,' ',NO_INV);	   /* esborra primer bloc */
-    ipu_pf++;					   /* actualitza posicio */
-    win_escricar(ipu_pf+l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
-    if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
-  }
-  if (((*tecla) == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
-  {
-    win_escricar(ipu_pf+l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
-    ipu_pf--;					    /* actualitza posicio */
-    win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
-    if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
-  }
-  if ((*tecla) == TEC_ESPAI) 
-    win_escristr("ARA HAURIA D'ATURAR ELS ELEMENTS DEL JOC");
+  int tec = 0;  
+
+//  do				/********** bucle principal del joc **********/
+//  {	
+    printf("Ara llegirem tecla!\n");
+    tec = win_gettec();    
+    //*tecla = (int *)arg;
+    //int *tecla = &tec;
+
+    if (((*tecla) == TEC_AVALL) && (win_quincar(ipu_pf+l_pal,ipu_pc) == ' '))
+    {
+      win_escricar(ipu_pf,ipu_pc,' ',NO_INV);	   /* esborra primer bloc */
+      ipu_pf++;					   /* actualitza posicio */
+      win_escricar(ipu_pf+l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
+      if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+    }
+    if (((*tecla) == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
+    {
+      win_escricar(ipu_pf+l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
+      ipu_pf--;					    /* actualitza posicio */
+      win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
+      if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+    }
+    if ((*tecla) == TEC_ESPAI) 
+      win_escristr("ARA HAURIA D'ATURAR ELS ELEMENTS DEL JOC");
+
+
+  //} while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));
   
+  if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
+
   return NULL;
 }
 
@@ -330,7 +345,7 @@ void* mou_paleta_ordinador(void* arg)
 /* programa principal				    */
 int main(int n_args, const char *ll_args[])
 {
-  int cont = 0;
+  //int cont = 0;
   int tec = 0;
   pthread_t pilota, paleta_u, paleta_o;
 
@@ -347,7 +362,13 @@ int main(int n_args, const char *ll_args[])
   if (inicialitza_joc() !=0)    /* intenta crear el taulell de joc */
      exit(4);   /* aborta si hi ha algun problema amb taulell */
 
-  do				/********** bucle principal del joc **********/
+  tec = win_gettec();
+  //pthread_create(&paleta_u, NULL, mou_paleta_usuari, &tec);
+  //pthread_create(&paleta_o, NULL, mou_paleta_ordinador, NULL);
+  //pthread_create(&pilota, NULL, moure_pilota, &cont);
+/********** bucle principal del joc **********/
+
+  do				
   {	tec = win_gettec();
 	//if (tec != 0) mou_paleta_usuari(tec);
   if (tec != 0) pthread_create(&paleta_u, NULL, mou_paleta_usuari, &tec);
@@ -359,9 +380,12 @@ int main(int n_args, const char *ll_args[])
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));
   win_fi();
 
+
+/*
   if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
   else { if (cont == 0 || moviments == 0) printf("Ha guanyat l'ordinador!\n");
          else printf("Ha guanyat l'usuari!\n"); }
+*/         
   return(0);
   
 }
