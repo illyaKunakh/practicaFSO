@@ -172,11 +172,11 @@ return(0);
 
 void display_time() {
   char text[64];
-  int time = temps_transcorregut; int mov = moviments;
+  int time = temps_transcorregut; int mov = moviments; int mov1 = movimentsIni;
 
   snprintf(text, sizeof(text), "%02d:%02d", time/60, time%60);
   if(movimentsIni > 0) {
-    snprintf(text, sizeof(text), "%02d:%02d Moviments: %d", time/60, time%60, mov);
+    snprintf(text, sizeof(text), "%02d:%02d Moviments: %d Moviments inicials: %d", time/60, time%60, mov, mov1);
   }
   else {
     snprintf(text, sizeof(text), "%02d:%02d", time/60, time%60);
@@ -298,7 +298,7 @@ void* mou_paleta_usuari(void * arg) {
         pausa = !pausa;
       }
 
-    } while ((tecla != TEC_RETURN) && (moviments > 0 || moviments == -1) && (cont != -1) && (finalJoc != 1) && (cont != 51)); // Modificación aquí
+    } while ((tecla != TEC_RETURN) && (moviments > 0 || moviments == -1) && (cont != -1) && (finalJoc != 1) && (cont != n_col+1)); // Modificación aquí
 
     finalJoc = 1;
 
