@@ -20,11 +20,6 @@
 #define MAX_RET 5.0
 #define MAX_PALETES 9
 
-pthread_mutex_t mutex_paleta_u = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_paleta_o = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t pilota_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_t tid[2];
-
 int n_fil, n_col, m_por;
 int l_pal;
 float v_pal;
@@ -195,7 +190,6 @@ void* moure_pilota(void * arg) {
     (*result) = -1;       /* inicialment suposem que la pilota no surt */
     rh = rv = rd = pd = ' ';
 
-    //pthread_mutex_lock(&pilota_mutex);
     if ((f_h != ipil_pf) || (c_h != ipil_pc))
     {     /* si posicio hipotetica no coincideix amb la pos. actual */
       if (f_h != ipil_pf)     /* provar rebot vertical */
@@ -308,17 +302,18 @@ void* mou_paleta_ordinador(void* arg)
           paletes_vect[paleta_index].v_pal = -paletes_vect[paleta_index].v_pal;
       }
     }
-    else
+    else{
       paletes_vect[paleta_index].po_pf += paletes_vect[paleta_index].v_pal; /* actualitza posicio vertical real de la paleta */
       win_retard(retard);
+    }
 
   } while (finalJoc == 0);
 
   return NULL;
 }
 
-void *display_time(void *arg) {
-    int minutes = 0, seconds = 0;
+void display_time() {
+    unsigned short minutes = 0, seconds = 0;
     char time_str[20]; // Para almacenar el tiempo en formato de cadena
     while (!finalJoc) {
         win_retard(1000); 
@@ -336,7 +331,6 @@ void *display_time(void *arg) {
     total_minutes = minutes;
     total_seconds = seconds;
 
-    return NULL;
 }
 
 
@@ -346,11 +340,11 @@ int main(int n_args, const char *ll_args[]) {
   
   int tec = 0;
 
-  pthread_t pilota, paleta_u, paleta_o[MAX_PALETES], time_thread;
+  pthread_t pilota, paleta_u, paleta_o[MAX_PALETES]/*, time_thread*/;
 
   if ((n_args != 3) && (n_args !=4))
   {
-    fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
+    fprintf(stderr,"Comanda: tennis1 fit_param moviments [retard]\n");
     exit(1);
   }
   carrega_parametres(ll_args[1]);
@@ -362,23 +356,20 @@ int main(int n_args, const char *ll_args[]) {
   if (inicialitza_joc() !=0)    /* attempt to create the game board */
      exit(4);   /* abort if there is any problem with the board */
 
-  pthread_mutex_init(&pilota_mutex, NULL);
-
-  /**** game loop ****/
   pthread_create(&paleta_u, NULL, mou_paleta_usuari, &tec);   
   pthread_create(&pilota, NULL, moure_pilota, &tec);
-  pthread_create(&time_thread, NULL, display_time, NULL);
   
   for (int i = 0; i < n_paletes; i++) {
     int paleta_index = i; 
     pthread_create(&paleta_o[i], NULL, mou_paleta_ordinador, (void *)&paleta_index);
   }
 
+  do {
+    display_time();
+  }while(finalJoc == 0);
 
   pthread_join(paleta_u, NULL);
   pthread_join(pilota, NULL);
-  pthread_join(time_thread, NULL);
-
   for (int i = 0; i < n_paletes; i++) {
     pthread_join(paleta_o[i], NULL);
   }
