@@ -1,7 +1,6 @@
-/**************************/
-/*                                Tennis1.c                                 */
-/**************************/
-
+/***************************************************************************/
+/*                                Tennis2.c                                */
+/***************************************************************************/
 
 
 #include <stdio.h>      /* incloure definicions de funcions estandard */
@@ -377,10 +376,6 @@ void* mou_paleta_ordinador(void* arg)
 
 
 
-
-
-
-
 int main(int n_args, const char *ll_args[]) {
   
   int tec = 0;
@@ -436,15 +431,8 @@ int main(int n_args, const char *ll_args[]) {
   pthread_mutex_destroy(&movimentsMutex);
   pthread_mutex_destroy(&pantallaMutex);
   
-  
-
-    if (cont == 0 || moviments == 0) printf("Ha guanyat l'ordinador!\n");
-    else printf("Ha guanyat l'usuari!\n");
-
-
-  
-
-  
+  if (cont == 0 || moviments == 0) printf("Ha guanyat l'ordinador!\n");
+  else printf("Ha guanyat l'usuari!\n");
 
   
   return(0);
