@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "winsuport.h"
+#include "winsuport2.h"
 #include "memoria.h" 
 
 #define MIN_VEL -1.0
