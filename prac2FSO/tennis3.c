@@ -6,8 +6,9 @@
 
 #include <stdio.h>      /* incloure definicions de funcions estandard */
 #include <stdlib.h>
-#include "winsuport.h"      /* incloure definicions de funcions propies */
+#include "winsuport2.h"      /* incloure definicions de funcions propies */
 #include "memoria.h" 
+#include <pthread.h>
 
 #define MIN_FIL 7
 #define MAX_FIL 25
@@ -47,6 +48,8 @@ typedef struct {
 } p_ordinador;
 
 p_ordinador paletes_vect[MAX_PALETES];
+
+pid_t pid_paleta_o[MAX_PALETES];
 
 void carrega_parametres(const char *nom_fit) {
     FILE *fit;
@@ -270,20 +273,6 @@ void* mou_paleta_usuari(void * arg) {
 void* mou_paleta_ordinador(void* arg) {
 }
 
-void crea_processes_fill() {
-  pid_t pid;
-  for (int i = 0; i < n_paletes; i++) {
-    pid = fork();
-    if (pid == 0) { // Processos fill
-      execl("pal_ord3", "pal_ord3", NULL); // Executar el codi del procés fill
-      exit(EXIT_FAILURE); // En cas que l'execució de l'execució del procés fill falli
-    } else if (pid < 0) { // Error en la creació del procés fill
-        perror("Error en la creació del procés fill");
-        exit(EXIT_FAILURE);
-    }
-  }
-}
-
 void display_time() {
     unsigned short minutes = 0, seconds = 0;
     char time_str[20]; // Para almacenar el tiempo en formato de cadena
@@ -307,9 +296,9 @@ void display_time() {
 
 
 int main(int n_args, const char *ll_args[]) {
-  
+  int n;
   int tec = 0;
-  int pid_paleta_u, pid_pilota, pid_paleta_o[MAX_PALETES];
+  pthread_t pilota, paleta_u;
 
   if ((n_args != 3) && (n_args !=4))
   {
@@ -326,54 +315,33 @@ int main(int n_args, const char *ll_args[]) {
   if (inicialitza_joc() !=0)    /* attempt to create the game board */
      exit(4);   /* abort if there is any problem with the board */
 
-  crea_processes_fill();
-  pid_paleta_u = fork(); // Paleta de l'usuari
 
-  if (pid_paleta_u == 0) { // Process fill (paleta de l'usuari)
-    mou_paleta_usuari(&tec);
-    exit(0);
-  } else if (pid_paleta_u < 0) {
-      fprintf(stderr, "Error en la creació del procés de la paleta de l'usuari\n");
-      exit(1);
-  }
-
-  pid_pilota = fork(); // Pilota
-
-  if (pid_pilota == 0) { // Process fill (pilota)
-      moure_pilota(&tec);
-      exit(0);
-  } else if (pid_pilota < 0) {
-      fprintf(stderr, "Error en la creació del procés de la pilota\n");
-      exit(1);
-  }
-
+  pthread_create(&paleta_u, NULL, mou_paleta_usuari, &tec);   
+  pthread_create(&pilota, NULL, moure_pilota, &tec);
+  
+  n = 0;
   for (int i = 0; i < n_paletes; i++) {
     pid_paleta_o[i] = fork(); // Paletes de l'ordinador
 
-    if (pid_paleta_o[i] == 0) { // Process fill (paleta de l'ordinador)
+    if (pid_paleta_o[n] == (pid_t) 0) { // Process fill (paleta de l'ordinador)
       int paleta_index = i;
-      mou_paleta_ordinador((void *)&paleta_index);
+      execlp("./pal_ord3", "pal_ord3",&paleta_index , NULL);
         exit(0);
-    } else if (pid_paleta_o[i] < 0) {
-      fprintf(stderr, "Error en la creació del procés de la paleta de l'ordinador\n");
-        exit(1);
-    }
+    } else if (pid_paleta_o[n] > 0) n++;
+    
   }
-
-    // Espera fins que el joc finalitzi
 
   do {
     display_time();
   } while(finalJoc == 0);
 
-    // Espera que tots els processos fills finalitzin
 
-  wait(NULL); // Paleta de l'usuari
-  wait(NULL); // Pilota
-
-  for (int i = 0; i < n_paletes; i++) {
-    wait(NULL); // Paletes de l'ordinador
+  for (int i = 0; i < n; i++) {
+    waitpid(pid_paleta_o[i]);
   }
+
+  pthread_join(paleta_u, NULL);
+  pthread_join(pilota, NULL);
 
   win_fi();
 
