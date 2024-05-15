@@ -19,6 +19,7 @@
 #define TEC_DRETA   'd'
 #define TEC_ESQUER  'a'
 #define TEC_RETURN  13  	/* tecla de Carry Return */
+#define TEC_ESPAI   ' ' 
 
 #define EOL  10			/* salt de linia en un fitxer UNIX */
 
