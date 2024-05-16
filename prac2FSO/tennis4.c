@@ -1,5 +1,5 @@
 /**************************/
-/*                                Tennis4.c                                 */
+/*                                Tennis2.c                                 */
 /**************************/
 
 
@@ -26,6 +26,9 @@
 #define MIN_RET 0.0
 #define MAX_RET 5.0
 #define MAX_PALETES 9
+
+int semPantalla;
+int semMoviments;
 
 int m_por;
 int ipu_pf, ipu_pc;
@@ -64,7 +67,6 @@ mem_comu *parametres_pal;
 
 pid_t paletes[MAX_PALETES];
 
-int id_semafor_pantalla, id_semafor_moviments;
 int id_bustia;
 int *punter_bustia;
 
@@ -157,9 +159,6 @@ int inicialitza_joc(void) {
   p_tauler = map_mem(tauler);
   win_set(p_tauler, parametres_pal->n_fil, parametres_pal->n_col);
 
-    id_semafor_moviments = ini_sem(1);
-    id_semafor_pantalla = ini_sem(1);
-
   i_port = parametres_pal->n_fil/2 - m_por/2;       /* crea els forats de la porteria */
   if (parametres_pal->n_fil%2 == 0) i_port--;
   if (i_port == 0) i_port=1;
@@ -210,8 +209,9 @@ void display_time() {
   else {
     snprintf(text, sizeof(text), "%02d:%02d", time/60, time%60);
   }
-
+  waitS(semPantalla);
   win_escristr(text);
+  signalS(semPantalla);
 }
 
 
@@ -223,98 +223,93 @@ void display_time() {
 void* moure_pilota(void * arg) {
   do
   {
-    int f_h, c_h, paleta, direccio;
-    char rh,rv,rd,pd, missatge[4];
+    int f_h, c_h;
+    char rh,rv,rd,pd;
+    char missatge[2];
     //int *result = (int *)arg;
 
     if(!pausa) {
-      win_retard(parametres_pal->retard);
-      paleta = -1;
-
       f_h = pil_pf + pil_vf;        /* posicio hipotetica de la pilota */
       c_h = pil_pc + pil_vc;       
       rh = rv = rd = pd = ' ';
 
       if ((f_h != ipil_pf) || (c_h != ipil_pc))
       {     /* si posicio hipotetica no coincideix amb la pos. actual */
+        waitS(semPantalla);
         if (f_h != ipil_pf)     /* provar rebot vertical */
-        {   
-            waitS(id_semafor_pantalla);
-            rv = win_quincar(f_h,ipil_pc);  /* veure si hi ha algun obstacle */
-            signalS(id_semafor_pantalla);
-            if (rv != ' ')          /* si no hi ha res */
-            {   pil_vf = -pil_vf;       /* canvia velocitat vertical */
-                f_h = pil_pf+pil_vf;    /* actualitza posicio hipotetica */
-            }
+        {   rv = win_quincar(f_h,ipil_pc);  /* veure si hi ha algun obstacle */
+        if (rv != ' ')          /* si no hi ha res */
+        {   pil_vf = -pil_vf;       /* canvia velocitat vertical */
+            f_h = pil_pf+pil_vf;    /* actualitza posicio hipotetica */
+        }
         }
         if (c_h != ipil_pc)     /* provar rebot horitzontal */
-        {   
-            waitS(id_semafor_pantalla);
-            rh = win_quincar(ipil_pf,c_h);  /* veure si hi ha algun obstacle */
-            if ((rh != ' ') && (rh != '0') && (rh != '+'))          /* si no hi ha res */
-            {   
-                paleta = ((int)rh)-49;
-                if(pil_vc < 0) direccio = 2; else direccio = 1; //esquerra, sino dreta
-            }
+        {   rh = win_quincar(ipil_pf,c_h);  /* veure si hi ha algun obstacle */
+        if (rh != ' ')          /* si no hi ha res */
+        {    
+     
+            if ((rh != '0') && (rh != '+'))          /* si no hi ha res */
+                 {   
 
-            signalS(id_semafor_pantalla);
-            if (rh != ' ')          /* si no hi ha res */
-            {   
-                pil_vc = -pil_vc;      /* canvia velocitat horitzontal */
-                c_h = pil_pc+pil_vc;   /* actualitza posicio hipotetica */
-            }
+                   if((c_h < ipil_pc)) sprintf(missatge, "%c", '2');
+                   else if((c_h > ipil_pc)) sprintf(missatge, "%c", '1');
+                   
+                   fprintf(stderr, "%d", rh);
+                   fprintf(stderr, "enviado %s/ ",missatge);
+                   sendM(punter_bustia[((int)rh)-48], missatge, 2);
+                 }
+            pil_vc = -pil_vc;      /* canvia velocitat horitzontal */
+            c_h = pil_pc+pil_vc;   /* actualitza posicio hipotetica */
+        }
         } 
         if ((f_h != ipil_pf) && (c_h != ipil_pc))   /* provar rebot diagonal */
-        {   
-            signalS(id_semafor_pantalla);
-            rd = win_quincar(f_h,c_h);
-            signalS(id_semafor_pantalla);
-            if (rd != ' ')              /* si no hi ha obstacle */
-            {    pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
-                f_h = pil_pf+pil_vf;
-                c_h = pil_pc+pil_vc;       /* actualitza posicio entera */
-            }
+        {   rd = win_quincar(f_h,c_h);
+        if (rd != ' ')              /* si no hi ha obstacle */
+        {    
+            if(rd != '0' && rd != '+')
+            {
+              
+              if((c_h < ipil_pc && f_h < ipil_pf)||(c_h < ipil_pc && f_h > ipil_pf)) sprintf(missatge,"%c",'2');
+              
+              else if((c_h > ipil_pc && f_h > ipil_pf)||(c_h > ipil_pc && f_h < ipil_pf)) sprintf(missatge,"%c",'1');
+
+              sendM(punter_bustia[((int)rd)-48], missatge,2);
+            } 
+          
+          
+          
+            pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
+            f_h = pil_pf+pil_vf;
+            c_h = pil_pc+pil_vc;       /* actualitza posicio entera */
         }
-        waitS(id_semafor_pantalla);
+        }
         if (win_quincar(f_h,c_h) == ' ')    /* verificar posicio definitiva */
         {                       /* si no hi ha obstacle */
-            win_escricar(ipil_pf,ipil_pc,' ',NO_INV);   /* esborra pilota */
-            signalS(id_semafor_pantalla);
-            pil_pf += pil_vf; pil_pc += pil_vc;
-            ipil_pf = f_h; ipil_pc = c_h;       /* actualitza posicio actual */
-            if ((ipil_pc > 0) && (ipil_pc <= parametres_pal->n_col)){    /* si no surt */
-                waitS(id_semafor_pantalla);
-                win_escricar(ipil_pf,ipil_pc,'.',INVERS); /* imprimeix pilota */
-                signalS(id_semafor_pantalla);
-            }else
-            {
-                waitS(id_semafor_moviments); 
-                cont = ipil_pc;    /* codi de finalitzacio de partida */
-                signalS(id_semafor_moviments);
-            }
+        win_escricar(ipil_pf,ipil_pc,' ',NO_INV);   /* esborra pilota */
+        pil_pf += pil_vf; pil_pc += pil_vc;
+        ipil_pf = f_h; ipil_pc = c_h;       /* actualitza posicio actual */
+        if ((ipil_pc > 0) && (ipil_pc <= parametres_pal->n_col)){    /* si no surt */
+            win_escricar(ipil_pf,ipil_pc,'.',INVERS); /* imprimeix pilota */
+            signalS(semPantalla);
+        }else{
+            signalS(semPantalla);
+            cont = ipil_pc;    /* codi de finalitzacio de partida */
+            
         }
-        else 
-        {
-          signalS(id_semafor_pantalla);
+        }
+        else {
         } 
       }
-      else 
-      { 
-        pil_pf += pil_vf; pil_pc += pil_vc; 
-      }
-
-      for(int i = 0; i < n_paletes; i++) 
-      {
-        if((i == paleta) && (direccio == 1)) sprintf(missatge, "%i", direccio);
-        else if((i == paleta) && (direccio == 2)) sprintf(missatge, "%i", direccio);
-        else sprintf(missatge, "%i", 0);
-        sendM(punter_bustia[i], missatge, 4);
-      }
+      else { pil_pf += pil_vf; pil_pc += pil_vc; }
 
     }
 
+    
+    waitS(semPantalla);
     win_update();
+    signalS(semPantalla);
 
+  win_retard(parametres_pal->retard * pil_ret);
   } while (parametres_pal->finalJoc == 0);
 
   pthread_exit(NULL);
@@ -326,11 +321,12 @@ void* mou_paleta_usuari(void * arg) {
     int tecla, mogut;  
     do
     { 
-      waitS(id_semafor_moviments);
+      waitS(semPantalla);
       tecla = win_gettec();
+      signalS(semPantalla);
       mogut = 0;
-      waitS(id_semafor_pantalla);
       if(!pausa){
+        waitS(semPantalla);
         if (((tecla) == TEC_AVALL) && (win_quincar(ipu_pf+parametres_pal->l_pal,ipu_pc) == ' '))
         {
           
@@ -346,16 +342,12 @@ void* mou_paleta_usuari(void * arg) {
           win_escricar(ipu_pf,ipu_pc,'0',INVERS);     /* imprimeix primer bloc */
           mogut = 1;
         } 
-        signalS(id_semafor_pantalla);
+        signalS(semPantalla);
         if(mogut == 1) {
+          waitS(semMoviments);
           parametres_pal->moviments--;
+          signalS(semMoviments);
         }
-        else 
-        {
-          signalS(id_semafor_moviments);
-          pthread_exit(0);
-        }
-        signalS(id_semafor_moviments);
       }
       if (tecla == TEC_ESPAI) {
         pausa = !pausa;
@@ -365,15 +357,14 @@ void* mou_paleta_usuari(void * arg) {
 
     parametres_pal->finalJoc = 1;
 
-    pthread_exit(0);
+    pthread_exit(NULL);
 }
 
 
 
 int main(int n_args, const char *ll_args[]) {
   pthread_t pilota, paleta_u;
-  
-  char s_variables[32], s_tauler[32], s_semafor_pantalla[32], s_semafor_moviments[32], s_busties[32];
+  char s_variables[32], s_tauler[32], s_semPantalla[20], s_semMoviments[20], s_busties[20];
 
   if ((n_args != 3) && (n_args !=4))
   {
@@ -381,19 +372,9 @@ int main(int n_args, const char *ll_args[]) {
     exit(1);
   }
 
-  mem_id = ini_mem(sizeof(mem_comu));
-  parametres_pal = map_mem(mem_id);
-  sprintf(s_variables, "%i", mem_id); // ID memoria de variebles astring
+    mem_id = ini_mem(sizeof(mem_comu));
+    parametres_pal = map_mem(mem_id);
 
-
-  id_semafor_pantalla = ini_sem(1);
-  sprintf(s_semafor_pantalla, "%i", id_semafor_pantalla);
-  id_semafor_moviments = ini_sem(1);
-  sprintf(s_semafor_moviments, "%i", id_semafor_moviments);
-
-  id_bustia = ini_mem(sizeof(int[n_paletes+1]));
-  punter_bustia = map_mem(id_bustia);
-  sprintf(s_busties, "%i", id_bustia);
 
   carrega_parametres(ll_args[1]);
   parametres_pal->moviments=atoi(ll_args[2]);
@@ -405,26 +386,34 @@ int main(int n_args, const char *ll_args[]) {
   if (inicialitza_joc() !=0)    /* attempt to create the game board */
      exit(4);   /* abort if there is any problem with the board */
 
-  for(int i = 0; i < n_paletes+1; i++) 
-  {
-    punter_bustia[i] = ini_mis(1);
-  }
+    semPantalla = ini_sem(1);
+    sprintf(s_semPantalla, "%i", semPantalla);
 
+    semMoviments = ini_sem(1);
+    sprintf(s_semMoviments, "%i", semMoviments);
 
+    id_bustia = ini_mem(sizeof(int[n_paletes+1]));
+    punter_bustia = map_mem(id_bustia);
+    sprintf(s_busties, "%i", id_bustia);
   
-  pthread_create(&paleta_u, NULL, mou_paleta_usuari, NULL);   
+ pthread_create(&paleta_u, NULL, mou_paleta_usuari, NULL);   
   pthread_create(&pilota, NULL, moure_pilota, NULL);
 
-  
-  sprintf(s_tauler, "%i", tauler); // ID memoria de tauler a string
+  sprintf(s_variables, "%i", mem_id);
+  sprintf(s_tauler, "%i", tauler);
 
-  fprintf(stderr, "%i\n", parametres_pal->l_pal);
+  for(int i = 0; i<= n_paletes; i++)
+  {
+    punter_bustia[i] = ini_mis();
+  }
+
+  //fprintf(stderr, "%i\n", parametres_pal->l_pal);
   for(int i = 0; i < n_paletes; i++) {
     paletes[i] = fork();
     if (paletes[i] == (pid_t) 0) {
         char pal[20];
         sprintf(pal, "%i", i);
-        execlp("./pal_ord4", "pal_ord4", pal, s_variables, s_tauler, s_semafor_pantalla, s_semafor_moviments, s_busties, (char *) 0);
+        execlp("./pal_ord4", "pal_ord4", pal, s_variables, s_tauler, s_semPantalla, s_semMoviments, s_busties, (char *) 0);
     }
   }
   
@@ -433,7 +422,7 @@ int main(int n_args, const char *ll_args[]) {
   do{
     temps_transcorregut++;
     display_time();
-  win_retard(freq);
+    win_retard(freq);
   } while (parametres_pal->finalJoc == 0);
 
   pthread_join(paleta_u, NULL);
@@ -444,19 +433,20 @@ int main(int n_args, const char *ll_args[]) {
     waitpid(paletes[i],NULL,0);
   }
 
-  elim_sem(id_semafor_pantalla);
-  elim_sem(id_semafor_moviments);
+  for(int i = 0; i <=n_paletes; i++)
+  {
+    elim_mis(punter_bustia[i]);
+  }
 
   elim_mem(mem_id);
   elim_mem(tauler);
-
   elim_mem(id_bustia);
+
+  elim_sem(semMoviments);
+  elim_sem(semPantalla);
   
 
   win_fi();
-
-  
-
     if (cont == 0 || parametres_pal->moviments == 0) printf("Ha guanyat l'ordinador!\n");
     else printf("Ha guanyat l'usuari!\n");
 
