@@ -308,7 +308,7 @@ void* moure_pilota(void * arg) {
         if((i == paleta) && (direccio == 1)) sprintf(missatge, "%i", direccio);
         else if((i == paleta) && (direccio == 2)) sprintf(missatge, "%i", direccio);
         else sprintf(missatge, "%i", 0);
-        sendM(punter_bustia, missatge, 4);
+        sendM(punter_bustia[i], missatge, 4);
       }
 
     }
@@ -329,7 +329,7 @@ void* mou_paleta_usuari(void * arg) {
       waitS(id_semafor_moviments);
       tecla = win_gettec();
       mogut = 0;
-      waits(id_semafor_pantalla);
+      waitS(id_semafor_pantalla);
       if(!pausa){
         if (((tecla) == TEC_AVALL) && (win_quincar(ipu_pf+parametres_pal->l_pal,ipu_pc) == ' '))
         {
@@ -391,7 +391,7 @@ int main(int n_args, const char *ll_args[]) {
   id_semafor_moviments = ini_sem(1);
   sprintf(s_semafor_moviments, "%i", id_semafor_moviments);
 
-  id_bustia = ini_mem(sizeof(int[n_paletes]));
+  id_bustia = ini_mem(sizeof(int[n_paletes+1]));
   punter_bustia = map_mem(id_bustia);
   sprintf(s_busties, "%i", id_bustia);
 
@@ -404,6 +404,11 @@ int main(int n_args, const char *ll_args[]) {
 
   if (inicialitza_joc() !=0)    /* attempt to create the game board */
      exit(4);   /* abort if there is any problem with the board */
+
+  for(int i = 0; i < n_paletes+1; i++) 
+  {
+    punter_bustia[i] = ini_mis(1);
+  }
 
 
   
@@ -424,7 +429,7 @@ int main(int n_args, const char *ll_args[]) {
   }
   
   //display_time();
-  int freq = 100;
+  int freq = 1000;
   do{
     temps_transcorregut++;
     display_time();
@@ -439,13 +444,13 @@ int main(int n_args, const char *ll_args[]) {
     waitpid(paletes[i],NULL,0);
   }
 
-  elim_sem(s_semafor_pantalla);
-  elim_sem(s_semafor_moviments);
+  elim_sem(id_semafor_pantalla);
+  elim_sem(id_semafor_moviments);
 
   elim_mem(mem_id);
   elim_mem(tauler);
 
-  elim_mem(punter_bustia);
+  elim_mem(id_bustia);
   
 
   win_fi();
